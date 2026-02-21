@@ -1,0 +1,234 @@
+# Agent Metadata Card
+# This file contains metadata about the agent for discovery and management
+# Maps to the deployment schema defined in documentation/AGENT_DEPLOYMENT.md
+
+name: sandbox
+version: 0.0.1
+description: A demonstration agent that showcases the GTS Agency platform capabilities including data processing, report generation, and automated analysis.
+
+# Unique code identifier for the agent (required for deployment)
+code: sandbox
+
+# Agent type: workflow, autonomous, or interactive
+# - autonomous: Agent operates independently, making decisions without human intervention
+# - workflow: Agent follows predefined steps and processes, typically orchestrated
+# - interactive: Agent requires human-in-the-loop interaction for decision making
+executionType: autonomous
+
+# Programming language and version (for local development)
+language: python
+language_version: "3.12"
+
+# Entry point for agent execution
+entrypoint: sandbox.agency:main
+
+# Documentation URL
+documentationUrl: https://agents.groundtruthsystems.com/agents/sandbox1
+
+# Tags for categorization and discovery
+tags:
+  - agent
+  - python
+  - data-processing
+  - automation
+
+# Provider information
+provider:
+  organization: Ground Truth Systems
+  url: https://groundtruthsystems.com
+  # Additional contact info (not in deployment schema, but useful)
+  contact: Demo Team
+  contact_number: +12025551234
+  contact_email: demo@groundtruthsystems.com
+  region: US
+
+# Agent capabilities
+capabilities:
+  streaming: true
+  pushNotifications: false
+  stateTransitionHistory: true
+
+# Default input/output modes
+defaultInputModes:
+  - text/plain
+  - application/json
+
+inputSchema:
+  application/json:
+    type: object
+    required:
+      - task_type
+    properties:
+      task_type:
+        type: string
+        description: The type of task to perform
+        enum:
+          - echo
+      data:
+        type: object
+        description: The input data to process
+        properties:
+          source:
+            type: string
+            description: Data source identifier or URI
+          format:
+            type: string
+            description: Format of the input data
+            enum:
+              - json
+              - csv
+              - parquet
+          content:
+            type: object
+            description: Inline data content (alternative to source)
+      options:
+        type: object
+        description: Task-specific configuration options
+        properties:
+          output_format:
+            type: string
+            description: Desired output format
+            default: json
+          include_metadata:
+            type: boolean
+            description: Include metadata in response
+            default: true
+          max_results:
+            type: integer
+            description: Maximum number of results to return
+            minimum: 1
+            maximum: 10000
+            default: 100
+      context:
+        type: object
+        description: Additional context for the task
+        properties:
+          session_id:
+            type: string
+            description: Session identifier for tracking
+          correlation_id:
+            type: string
+            description: Correlation ID for distributed tracing
+          user_id:
+            type: string
+            description: User identifier for audit logging
+
+defaultOutputModes:
+  - application/json
+  - text/plain
+
+outputSchema:
+  application/json:
+    type: object
+    required:
+      - status
+      - timestamp
+    properties:
+      status:
+        type: string
+        description: Execution status
+        enum:
+          - success
+          - error
+          - partial
+      result:
+        type: object
+        description: The output data from the task
+        properties:
+          data:
+            type: object
+            description: Processed data or analysis results
+          summary:
+            type: string
+            description: Human-readable summary of results
+          artifacts:
+            type: array
+            description: Generated artifacts (reports, files, etc.)
+            items:
+              type: object
+              properties:
+                id:
+                  type: string
+                  description: Artifact identifier
+                type:
+                  type: string
+                  description: Artifact MIME type
+                uri:
+                  type: string
+                  description: URI to access the artifact
+                size:
+                  type: integer
+                  description: Artifact size in bytes
+      metadata:
+        type: object
+        description: Execution metadata
+        properties:
+          execution_time_ms:
+            type: integer
+            description: Task execution time in milliseconds
+          agent_version:
+            type: string
+            description: Agent version that processed the request
+          model_version:
+            type: string
+            description: ML model version if applicable
+          records_processed:
+            type: integer
+            description: Number of records processed
+      errors:
+        type: array
+        description: Error details if status is error or partial
+        items:
+          type: object
+          properties:
+            code:
+              type: string
+              description: Error code
+            message:
+              type: string
+              description: Human-readable error message
+            field:
+              type: string
+              description: Field that caused the error (if applicable)
+      timestamp:
+        type: string
+        format: date-time
+        description: Response timestamp in ISO 8601 format
+
+# Resource requirements (for orchestration)
+resources:
+  memory: 512Mi
+  cpu: 250m
+
+# Environment variables required by the agent
+environment:
+  - name: LOG_LEVEL
+    value: INFO
+    required: false
+  - name: API_KEY
+    value: null
+    required: true
+
+# Dependencies and integrations
+integrations:
+  mcp: true
+  a2a: true
+
+# Skills - capabilities the agent can perform
+skills:
+  - id: parrot
+    name: Parrot
+    description: Can repeat anything
+    tags:
+      - parrot
+    examples:
+      - "Say I want a cracker"
+    inputModes:
+      - application/json
+      - text/csv
+    outputModes:
+      - application/json
+      - text/plain
+
+# License
+license: MIT

@@ -1,0 +1,37 @@
+[project]
+name = "gts-demo-agent"
+version = "0.0.1"
+description = "Add your description here"
+authors = [{name="Ground Control Systems", email="engineering@groundcontrolsystems.com"}]
+license = { file = "LICENSE" }
+requires-python = ">=3.12"
+# Optional: Define dependencies needed by the Python code using the module
+dependencies = [
+    "opentelemetry-api",
+    "opentelemetry-sdk",
+    "opentelemetry-exporter-otlp-proto-http",
+
+    "langfuse>=3.8.1",
+    "opentelemetry-instrumentation-anthropic>=0.47.5",
+    "openinference-instrumentation-google-genai>=0.1.8",
+    "openinference-instrumentation-llama-index>=4.3.8",
+
+    "pydantic>=2.9.2",
+
+    "llama-index-core>=0.14.8",
+
+    "gts-agency-python-sdk>=0.0.1rc4",
+]
+
+[tool.setuptools]
+packages = ["sandbox"]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.0.0",
+    "pytest-asyncio>=0.24.0",
+]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tests"]
