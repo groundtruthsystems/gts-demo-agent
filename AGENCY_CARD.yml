@@ -2,12 +2,12 @@
 # This file contains metadata about the agent for discovery and management
 # Maps to the deployment schema defined in documentation/AGENT_DEPLOYMENT.md
 
-name: sandbox
+name: demo
 version: 0.0.1
 description: A demonstration agent that showcases the GTS Agency platform capabilities including data processing, report generation, and automated analysis.
 
 # Unique code identifier for the agent (required for deployment)
-code: sandbox
+code: demo
 
 # Agent type: workflow, autonomous, or interactive
 # - autonomous: Agent operates independently, making decisions without human intervention
@@ -20,7 +20,7 @@ language: python
 language_version: "3.12"
 
 # Entry point for agent execution
-entrypoint: sandbox.agency:main
+entrypoint: demo.agency:main
 
 # Documentation URL
 documentationUrl: https://agents.groundtruthsystems.com/agents/sandbox1

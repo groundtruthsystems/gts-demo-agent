@@ -24,7 +24,7 @@ dependencies = [
 ]
 
 [tool.setuptools]
-packages = ["sandbox"]
+packages = ["demo"]
 
 [project.optional-dependencies]
 dev = [
