@@ -3,7 +3,7 @@
 # Maps to the deployment schema defined in documentation/AGENT_DEPLOYMENT.md
 
 name: demo
-version: 0.0.5
+version: 0.0.6
 description: A demonstration agent that showcases the GTS Agency platform capabilities including data processing, report generation, and automated analysis.
 
 # Unique code identifier for the agent (required for deployment)
@@ -23,7 +23,7 @@ language_version: "3.12"
 entrypoint: demo.agency
 
 # Documentation URL
-documentationUrl: https://agents.groundtruthsystems.com/agents/sandbox1
+documentationUrl: https://agents.groundtruthsystems.com/agents/demo
 
 # Tags for categorization and discovery
 tags:
