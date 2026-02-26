@@ -2,7 +2,7 @@ import logging
 
 from llama_index.core.workflow import Workflow, Context, StartEvent, StopEvent, step
 
-from sandbox.common.logger import setup_logger
+from demo.common.logger import setup_logger
 
 
 # Set up logger
