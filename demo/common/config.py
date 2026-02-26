@@ -11,31 +11,6 @@ class Config(BaseModel):
     def get(self, key, default=None):
         return self.config_data.get(key, default)
 
-    def llm_config(self, vendor, model: str | None = None, purpose: str | None = None):
-        configs = self.config_data.get("llms", {}).get(vendor, [])
-        default = None
-        for config in configs:
-            if config.get("model", "") == model:
-                return config
-            if config.get("purpose", "") == purpose:
-                return config
-            if config.get("default", False):
-                default = config
-
-        return default
-
-    def object_storage_bucket(self):
-        return self.config_data.get("object_storage", {}).get("bucket")
-
-    def object_storage(self):
-        return self.config_data.get("object_storage", {}).get("vendor", "aws")
-
-    def object_storage_aws(self):
-        return self.config_data.get("object_storage", {}).get("aws")
-
-    def object_storage_minio(self):
-        return self.config_data.get("object_storage", {}).get("minio")
-
     def ontology_service_config(self):
         return self.config_data.get("gateways", {}).get("registry", {}).get("ontology")
 

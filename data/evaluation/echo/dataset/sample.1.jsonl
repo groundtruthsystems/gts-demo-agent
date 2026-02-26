@@ -1,0 +1,2 @@
+{"request": "ping", "expected_output": "ping"}
+{"request": "echo", "expected_output": "echo"}

@@ -18,5 +18,5 @@ class EchoWorkflow(Workflow):
     @step()
     async def sample(self, ctx: Context, ev: StartEvent) -> StopEvent:
         logger.debug("Enter sample")
-        return StopEvent()
+        return StopEvent(result="")
 

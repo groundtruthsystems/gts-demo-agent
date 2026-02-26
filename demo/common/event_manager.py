@@ -9,7 +9,7 @@ from typing import Optional
 
 from pydantic import BaseModel, field_serializer
 
-from sandbox.common.logger import setup_logger
+from demo.common.logger import setup_logger
 
 # Configure basic logging for feedback
 # You might want to customize this based on your application's logging setup

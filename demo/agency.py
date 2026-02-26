@@ -4,13 +4,13 @@ import os
 import asyncio
 from datetime import datetime
 
-from sandbox.agents.common import ProgressEvent
-from sandbox.agents.echo import EchoWorkflow
+from demo.agents.common import ProgressEvent
+from demo.agents.echo import EchoWorkflow
 
-from sandbox.common.event_manager import EventManager, AnalyticsEvent
-from sandbox.common.input import Input
-from sandbox.common.config import Config
-from sandbox.common.logger import setup_logger
+from demo.common.event_manager import EventManager, AnalyticsEvent
+from demo.common.input import Input
+from demo.common.config import Config
+from demo.common.logger import setup_logger
 
 from llama_index.core.workflow import Context
 

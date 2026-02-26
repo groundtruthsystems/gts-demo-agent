@@ -1,0 +1,35 @@
+{
+  "id": "65d905dd-54d7-495d-b4d3-f0f6bdf94830",
+  "is_base": true,
+  "name": "Base Configuration",
+  "parameters": {
+    "control_plane": {
+      "auth_url": "<url>",
+      "base_url": "<url>",
+      "beat": {
+        "context": "/api/workers/{}/_command",
+        "interval_secs": 10,
+        "timeout_secs": 10
+      },
+      "client_id": "<client_id>",
+      "client_secret": "<client_secret>",
+      "enabled": true,
+      "flush_interval_seconds": 10,
+      "insecure": true,
+      "publish_events": true,
+      "publish_results": true
+    },
+    "database": {},
+    "deployment_config": {},
+    "gateways": { },
+    "group": -1,
+    "host": {},
+    "llms": {},
+    "name": "worker-1",
+    "object_storage": {},
+    "observability": {},
+    "organisation": 2,
+    "prompt_management": { },
+    "redis": {}
+  }
+}

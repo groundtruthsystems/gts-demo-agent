@@ -1,0 +1,19 @@
+[
+  {
+    "id": "9eaad217-3f88-42ca-acdb-e0e5406c620f",
+    "is_base": false,
+    "name": "qwen3vl32b",
+    "parameters": {
+      "llms": {
+        "llamacpp": [
+          {
+            "api_key": "<key>",
+            "base_url": "<url>",
+            "default": true,
+            "model": "qwen3vl32b"
+          }
+        ]
+      }
+    }
+  }
+]
