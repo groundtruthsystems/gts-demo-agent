@@ -10,4 +10,5 @@ from .echo import EchoWorkflow
 
 __all__ = [
     'EchoWorkflow',
+    'ErrorWorkflow',
 ]
