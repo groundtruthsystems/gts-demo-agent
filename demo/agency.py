@@ -1,6 +1,7 @@
 import json
 import logging
 import os
+import sys
 import asyncio
 from datetime import datetime
 
@@ -113,8 +114,10 @@ async def main():
 
     except json.JSONDecodeError:
         print(f"Error: '{input_file}' is not a valid JSON file.")
+        sys.exit(1)
     except Exception as e:
         print(f"Error: {str(e)}")
+        sys.exit(1)
 
 if __name__ == "__main__":
     asyncio.run(main())
