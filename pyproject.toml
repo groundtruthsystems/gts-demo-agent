@@ -1,6 +1,6 @@
 [project]
 name = "gts-demo-agent"
-version = "0.0.7"
+version = "0.0.9"
 description = "Add your description here"
 authors = [{name="Ground Control Systems", email="engineering@groundcontrolsystems.com"}]
 license = { file = "LICENSE" }
