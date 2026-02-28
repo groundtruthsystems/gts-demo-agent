@@ -3,6 +3,7 @@ import logging
 
 from llama_index.core.workflow import Workflow, Context, StartEvent, StopEvent, step
 
+from demo.common.event_manager import EventManager, AnalyticsEvent
 from demo.common.logger import setup_logger
 
 
@@ -18,6 +19,7 @@ class EventingWorkflow(Workflow):
 
     @step()
     async def sample(self, ctx: Context, ev: StartEvent) -> StopEvent:
+        correlation = await ctx.store.get('correlation')
         print('SAMPLE_START')
         EventManager.push(AnalyticsEvent.new(correlation, "SAMPLE_START"))
         await asyncio.sleep(40)
