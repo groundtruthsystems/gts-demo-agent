@@ -18,10 +18,13 @@ class EventingWorkflow(Workflow):
 
     @step()
     async def sample(self, ctx: Context, ev: StartEvent) -> StopEvent:
+        print('SAMPLE_START')
         EventManager.push(AnalyticsEvent.new(correlation, "SAMPLE_START"))
         await asyncio.sleep(40)
+        print('SAMPLE_PROCESSING')
         EventManager.push(AnalyticsEvent.new(correlation, "SAMPLE_PROCESSING"))
         await asyncio.sleep(40)
+        print('SAMPLE_GOING')
         EventManager.push(AnalyticsEvent.new(correlation, "SAMPLE_GOING"))
         await asyncio.sleep(40)
         return StopEvent(result={"hello": "world"})

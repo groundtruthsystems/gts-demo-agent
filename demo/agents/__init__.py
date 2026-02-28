@@ -7,6 +7,8 @@ Contains LlamaIndex workflow implementations:
 """
 
 from .echo import EchoWorkflow
+from .err import ErrorWorkflow
+from .eventing import EventingWorkflow
 
 __all__ = [
     'EchoWorkflow',

@@ -3,6 +3,7 @@ import logging
 import os
 import sys
 import asyncio
+import uuid
 from datetime import datetime
 
 from demo.agents.common import ProgressEvent
@@ -40,7 +41,7 @@ async def process_data(config_data: Config, input_data):
 
 
 
-    correlation = input_data["arguments"]["correlation"]
+    correlation = input_data["arguments"].get("correlation", str(uuid.uuid4()))
 
     EventManager.push(AnalyticsEvent.new(correlation, "AGENT_STARTING"))
 
@@ -57,7 +58,7 @@ async def process_data(config_data: Config, input_data):
     if workflow:
         _input = Input(input_data=input_data)
         _context = Context(workflow=workflow)
-        await _context.store.set('correlation', input_data["arguments"]["correlation"])
+        await _context.store.set('correlation', correlation)
         await _context.store.set('request', input_data)
 
         handler = workflow.run(ctx=_context, correlation=correlation, input=_input)
