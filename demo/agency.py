@@ -49,11 +49,11 @@ async def process_data(config_data: Config, input_data):
     workflow = None
 
     if team == "echo":
-        workflow = EchoWorkflow(config_data)
+        workflow = EchoWorkflow(config_data, timeout=120)
     elif team == "error":
         workflow = ErrorWorkflow(config_data)
     elif team == "event":
-        workflow = EventingWorkflow(config_data)
+        workflow = EventingWorkflow(config_data, timeout=240)
 
     if workflow:
         _input = Input(input_data=input_data)
