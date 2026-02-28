@@ -8,6 +8,7 @@ from datetime import datetime
 from demo.agents.common import ProgressEvent
 from demo.agents.echo import EchoWorkflow
 from demo.agents.err import ErrorWorkflow
+from demo.agents.eventing import EventingWorkflow
 
 from demo.common.event_manager import EventManager, AnalyticsEvent
 from demo.common.input import Input
@@ -50,6 +51,8 @@ async def process_data(config_data: Config, input_data):
         workflow = EchoWorkflow(config_data)
     elif team == "error":
         workflow = ErrorWorkflow(config_data)
+    elif team == "event":
+        workflow = EventingWorkflow(config_data)
 
     if workflow:
         _input = Input(input_data=input_data)
