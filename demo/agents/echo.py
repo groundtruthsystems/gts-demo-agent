@@ -20,7 +20,7 @@ class EchoWorkflow(Workflow):
     @step()
     async def sample(self, ctx: Context, ev: StartEvent) -> StopEvent:
         logger.debug("Enter sample")
-        await asyncio.sleep(40)
         EventManager.push(AnalyticsEvent.new("", "AGENT_CONFIG", self.config_data.config_data))
+        await asyncio.sleep(40)
         return StopEvent(result="Pong")
 
