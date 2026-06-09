@@ -3,6 +3,7 @@ import logging
 
 from llama_index.core.workflow import Workflow, Context, StartEvent, StopEvent, step
 
+from demo.common.event_manager import EventManager, AnalyticsEvent
 from demo.common.logger import setup_logger
 
 
@@ -20,5 +21,6 @@ class EchoWorkflow(Workflow):
     async def sample(self, ctx: Context, ev: StartEvent) -> StopEvent:
         logger.debug("Enter sample")
         await asyncio.sleep(40)
-        return StopEvent(result="")
+        EventManager.push(AnalyticsEvent.new("", "AGENT_CONFIG", self.config_data.config_data))
+        return StopEvent(result="Pong")
 
