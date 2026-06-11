@@ -3,8 +3,10 @@ import logging
 import os
 import sys
 import asyncio
+import contextlib
 import uuid
 from datetime import datetime
+from importlib.metadata import version
 
 from demo.agents.common import ProgressEvent
 from demo.agents.echo import EchoWorkflow
@@ -25,7 +27,7 @@ from langfuse import get_client
 
 logger = setup_logger(__name__, level=logging.DEBUG)
 
-async def process_data(config_data: Config, input_data):
+async def process_data(config_data: Config, input_data, tracer=None):
     """
     Args:
         config_data (dict): The loaded JSON data from config file
@@ -62,15 +64,28 @@ async def process_data(config_data: Config, input_data):
         await _context.store.set('correlation', correlation)
         await _context.store.set('request', input_data)
 
-        handler = workflow.run(ctx=_context, correlation=correlation, input=_input)
+        # Open a root span around the run so the workflow's step tasks (which
+        # copy the active context at creation) inherit it. Without an active
+        # span here, logs emitted inside the steps get trace_id=0 and cannot be
+        # correlated with the trace. OpenInference's step spans nest underneath.
+        span_ctx = (
+            tracer.start_as_current_span(f"agent.{team}")
+            if tracer is not None else contextlib.nullcontext()
+        )
+        with span_ctx as span:
+            if span is not None:
+                span.set_attribute("agent.team", team)
+                span.set_attribute("agent.correlation_id", correlation)
 
-        async for event in handler.stream_events():
-            logger.debug("Got event: %s", event)
-            if isinstance(event, ProgressEvent):
-                progress_event: ProgressEvent = event
-                EventManager.push(AnalyticsEvent.new(progress_event.correlation_id, 'PROGRESS', progress_event.data))
+            handler = workflow.run(ctx=_context, correlation=correlation, input=_input)
 
-        output_data["response"] = await handler
+            async for event in handler.stream_events():
+                logger.debug("Got event: %s", event)
+                if isinstance(event, ProgressEvent):
+                    progress_event: ProgressEvent = event
+                    EventManager.push(AnalyticsEvent.new(progress_event.correlation_id, 'PROGRESS', progress_event.data))
+
+            output_data["response"] = await handler
     else:
         output_data["message"] = "No agent found"
 
@@ -105,16 +120,38 @@ async def main():
             langfuse = get_client()
 
         # Initialize LoggerProvider and OTLPLogExporter to publish logs to the collector
+        from opentelemetry import trace as trace_api
         from opentelemetry._logs import set_logger_provider
         from opentelemetry.sdk._logs import LoggerProvider
         from opentelemetry.sdk._logs.export import SimpleLogRecordProcessor
+        from opentelemetry.sdk.resources import Resource
+        from opentelemetry.sdk.trace import TracerProvider
+        from opentelemetry.sdk.trace.export import SimpleSpanProcessor
         from opentelemetry.exporter.otlp.proto.http._log_exporter import OTLPLogExporter
+        from opentelemetry.exporter.otlp.proto.http.trace_exporter import OTLPSpanExporter
         import atexit
         import base64
         import urllib.parse
 
-        logger_provider = LoggerProvider()
+        team = input_data["arguments"]["team"]
+        service_name = f"gts-{team}"
+        os.environ.setdefault("OTEL_SERVICE_NAME", service_name)
+
+        try:
+            _version = version('gts-demo-agent')
+        except:
+            _version = 'unknown-0'
+
+        # Shared resource so exported traces and logs identify the same service.
+        resource = Resource.create({
+            "service.name": service_name,
+            "service.version": _version,
+            "deployment.environment": os.environ.get("DEPLOYMENT_ENVIRONMENT", "development"),
+        })
+
+        logger_provider = LoggerProvider(resource=resource)
         set_logger_provider(logger_provider)
+        tracer_provider = None
         try:
             host = os.environ.get("OTEL_EXPORTER_OTLP_ENDPOINT") or os.environ.get("LANGFUSE_BASE_URL")
             headers = {}
@@ -155,10 +192,34 @@ async def main():
             exporter = OTLPLogExporter(**exporter_kwargs)
             logger_provider.add_log_record_processor(SimpleLogRecordProcessor(exporter))
             atexit.register(logger_provider.shutdown)
-        except Exception as e:
-            logger.warning("Failed to initialize OTLP log exporter: %s", e)
 
-        LlamaIndexInstrumentor().instrument()
+            # Set up a real TracerProvider so OpenInference emits recording spans.
+            # Without this, spans are non-recording (invalid span context) and the
+            # LoggingHandler cannot stamp trace_id/span_id onto exported log records.
+            trace_endpoint = os.environ.get("OTEL_EXPORTER_OTLP_TRACES_ENDPOINT")
+            if not trace_endpoint and host:
+                if host.endswith("/api/public/otel/v1/traces"):
+                    trace_endpoint = host
+                else:
+                    trace_endpoint = host.rstrip("/") + "/api/public/otel/v1/traces"
+
+            span_kwargs = {}
+            if trace_endpoint:
+                span_kwargs["endpoint"] = trace_endpoint
+            if headers:
+                span_kwargs["headers"] = headers
+
+            tracer_provider = TracerProvider(resource=resource)
+            tracer_provider.add_span_processor(
+                SimpleSpanProcessor(OTLPSpanExporter(**span_kwargs))
+            )
+            atexit.register(tracer_provider.shutdown)
+        except Exception as e:
+            logger.warning("Failed to initialize OTLP exporters: %s", e)
+
+        # Pass our TracerProvider explicitly so OpenInference spans are recording
+        # and share the context the LoggingHandler reads for trace correlation.
+        LlamaIndexInstrumentor().instrument(tracer_provider=tracer_provider)
         # LoggingInstrumentor only injects trace/span IDs into log records for
         # correlation; it does NOT export logs. Attach a LoggingHandler bound to
         # our LoggerProvider so standard `logging` records are emitted over OTLP.
@@ -170,7 +231,8 @@ async def main():
         logging.getLogger().addHandler(otel_handler)
 
         # Process the data
-        output_data = await process_data(Config(config_data=config_data), input_data)
+        tracer = tracer_provider.get_tracer("demo.agency") if tracer_provider is not None else None
+        output_data = await process_data(Config(config_data=config_data), input_data, tracer=tracer)
 
         # Write output JSON file
         with open(output_file, 'w') as f:
