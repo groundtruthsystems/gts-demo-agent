@@ -3,6 +3,8 @@ import logging
 import os
 import sys
 import asyncio
+import atexit
+import base64
 import contextlib
 import uuid
 from datetime import datetime
@@ -22,10 +24,110 @@ from llama_index.core.workflow import Context
 
 from openinference.instrumentation.llama_index import LlamaIndexInstrumentor
 from opentelemetry.instrumentation.logging import LoggingInstrumentor
+from opentelemetry._logs import set_logger_provider
+from opentelemetry.sdk._logs import LoggerProvider, LoggingHandler
+from opentelemetry.sdk._logs.export import SimpleLogRecordProcessor
+from opentelemetry.sdk.resources import Resource
+from opentelemetry.sdk.trace import TracerProvider
+from opentelemetry.sdk.trace.export import SimpleSpanProcessor
+from opentelemetry.exporter.otlp.proto.http._log_exporter import OTLPLogExporter
+from opentelemetry.exporter.otlp.proto.http.trace_exporter import OTLPSpanExporter
 
 from langfuse import get_client
 
 logger = setup_logger(__name__, level=logging.DEBUG)
+
+
+def _otlp_headers():
+    """Build OTLP export headers from env, adding Langfuse Basic Auth if present."""
+    headers = {}
+
+    otel_headers = os.environ.get("OTEL_EXPORTER_OTLP_HEADERS")
+    if otel_headers:
+        for item in otel_headers.split(","):
+            if "=" in item:
+                k, v = item.split("=", 1)
+                headers[k.strip()] = v.strip()
+
+    public_key = os.environ.get("LANGFUSE_PUBLIC_KEY")
+    secret_key = os.environ.get("LANGFUSE_SECRET_KEY")
+    if public_key and secret_key and "Authorization" not in headers:
+        auth_b64 = base64.b64encode(f"{public_key}:{secret_key}".encode("utf-8")).decode("utf-8")
+        headers["Authorization"] = f"Basic {auth_b64}"
+
+    return headers
+
+
+def _otlp_endpoint(host, override_env, signal_path):
+    """Resolve an OTLP signal endpoint from an explicit override or the host + path."""
+    endpoint = os.environ.get(override_env)
+    if not endpoint and host:
+        endpoint = host if host.endswith(signal_path) else host.rstrip("/") + signal_path
+    return endpoint
+
+
+def _exporter_kwargs(endpoint, headers):
+    kwargs = {}
+    if endpoint:
+        kwargs["endpoint"] = endpoint
+    if headers:
+        kwargs["headers"] = headers
+    return kwargs
+
+
+def init_observability(service_name, service_version):
+    """Configure OTLP log + trace export and return a tracer for manual spans.
+
+    Sets up a LoggerProvider and TracerProvider (both exporting to the Langfuse
+    OTLP endpoints derived from LANGFUSE_BASE_URL / OTEL_* env vars), attaches a
+    LoggingHandler so stdlib logging records are exported over OTLP, and
+    instruments LlamaIndex with the tracer provider so its spans share the
+    context the LoggingHandler reads for trace/log correlation.
+
+    Returns the tracer to open a root span with, or None if exporter setup failed.
+    """
+    resource = Resource.create({
+        "service.name": service_name,
+        "service.version": service_version,
+        "deployment.environment": os.environ.get("DEPLOYMENT_ENVIRONMENT", "development"),
+    })
+
+    logger_provider = LoggerProvider(resource=resource)
+    set_logger_provider(logger_provider)
+
+    tracer_provider = None
+    try:
+        host = os.environ.get("OTEL_EXPORTER_OTLP_ENDPOINT") or os.environ.get("LANGFUSE_BASE_URL")
+        headers = _otlp_headers()
+
+        # Logs: bridge stdlib logging into the LoggerProvider via a LoggingHandler.
+        log_endpoint = _otlp_endpoint(host, "OTEL_EXPORTER_OTLP_LOGS_ENDPOINT", "/api/public/otel/v1/logs")
+        logger_provider.add_log_record_processor(
+            SimpleLogRecordProcessor(OTLPLogExporter(**_exporter_kwargs(log_endpoint, headers)))
+        )
+        atexit.register(logger_provider.shutdown)
+
+        # Traces: a real TracerProvider so OpenInference emits recording spans.
+        # Without this, spans are non-recording (invalid span context) and the
+        # LoggingHandler cannot stamp trace_id/span_id onto exported log records.
+        trace_endpoint = _otlp_endpoint(host, "OTEL_EXPORTER_OTLP_TRACES_ENDPOINT", "/api/public/otel/v1/traces")
+        tracer_provider = TracerProvider(resource=resource)
+        tracer_provider.add_span_processor(
+            SimpleSpanProcessor(OTLPSpanExporter(**_exporter_kwargs(trace_endpoint, headers)))
+        )
+        atexit.register(tracer_provider.shutdown)
+    except Exception as e:
+        logger.warning("Failed to initialize OTLP exporters: %s", e)
+
+    # Pass our TracerProvider explicitly so OpenInference spans are recording and
+    # share the context the LoggingHandler reads for trace correlation.
+    LlamaIndexInstrumentor().instrument(tracer_provider=tracer_provider)
+    # LoggingInstrumentor only injects trace/span IDs into log records for
+    # correlation; the LoggingHandler below is what actually exports logs.
+    LoggingInstrumentor().instrument()
+    logging.getLogger().addHandler(LoggingHandler(level=logging.NOTSET, logger_provider=logger_provider))
+
+    return tracer_provider.get_tracer("demo.agency") if tracer_provider is not None else None
 
 async def process_data(config_data: Config, input_data, tracer=None):
     """
@@ -119,119 +221,18 @@ async def main():
 
             langfuse = get_client()
 
-        # Initialize LoggerProvider and OTLPLogExporter to publish logs to the collector
-        from opentelemetry import trace as trace_api
-        from opentelemetry._logs import set_logger_provider
-        from opentelemetry.sdk._logs import LoggerProvider
-        from opentelemetry.sdk._logs.export import SimpleLogRecordProcessor
-        from opentelemetry.sdk.resources import Resource
-        from opentelemetry.sdk.trace import TracerProvider
-        from opentelemetry.sdk.trace.export import SimpleSpanProcessor
-        from opentelemetry.exporter.otlp.proto.http._log_exporter import OTLPLogExporter
-        from opentelemetry.exporter.otlp.proto.http.trace_exporter import OTLPSpanExporter
-        import atexit
-        import base64
-        import urllib.parse
-
         team = input_data["arguments"]["team"]
         service_name = f"gts-{team}"
         os.environ.setdefault("OTEL_SERVICE_NAME", service_name)
 
         try:
-            _version = version('gts-demo-agent')
-        except:
-            _version = 'unknown-0'
+            service_version = version('gts-demo-agent')
+        except Exception:
+            service_version = 'unknown-0'
 
-        # Shared resource so exported traces and logs identify the same service.
-        resource = Resource.create({
-            "service.name": service_name,
-            "service.version": _version,
-            "deployment.environment": os.environ.get("DEPLOYMENT_ENVIRONMENT", "development"),
-        })
-
-        logger_provider = LoggerProvider(resource=resource)
-        set_logger_provider(logger_provider)
-        tracer_provider = None
-        try:
-            host = os.environ.get("OTEL_EXPORTER_OTLP_ENDPOINT") or os.environ.get("LANGFUSE_BASE_URL")
-            headers = {}
-
-            # Parse standard OTel headers if set
-            otel_headers = os.environ.get("OTEL_EXPORTER_OTLP_HEADERS")
-            if otel_headers:
-                for item in otel_headers.split(","):
-                    if "=" in item:
-                        k, v = item.split("=", 1)
-                        headers[k.strip()] = v.strip()
-
-            # Add Basic Auth header if Langfuse credentials exist
-            public_key = os.environ.get("LANGFUSE_PUBLIC_KEY")
-            secret_key = os.environ.get("LANGFUSE_SECRET_KEY")
-            if public_key and secret_key and "Authorization" not in headers:
-                auth_str = f"{public_key}:{secret_key}"
-                auth_bytes = auth_str.encode('utf-8')
-                auth_b64 = base64.b64encode(auth_bytes).decode('utf-8')
-                headers["Authorization"] = f"Basic {auth_b64}"
-
-            # Build OTLP logs endpoint URL
-            endpoint = os.environ.get("OTEL_EXPORTER_OTLP_LOGS_ENDPOINT")
-            if not endpoint and host:
-                if host.endswith("/api/public/otel/v1/logs"):
-                    endpoint = host
-                else:
-                    # Langfuse OTLP logs signal endpoint. urljoin would drop any
-                    # base path, so join explicitly against the configured host.
-                    endpoint = host.rstrip("/") + "/api/public/otel/v1/logs"
-
-            exporter_kwargs = {}
-            if endpoint:
-                exporter_kwargs["endpoint"] = endpoint
-            if headers:
-                exporter_kwargs["headers"] = headers
-
-            exporter = OTLPLogExporter(**exporter_kwargs)
-            logger_provider.add_log_record_processor(SimpleLogRecordProcessor(exporter))
-            atexit.register(logger_provider.shutdown)
-
-            # Set up a real TracerProvider so OpenInference emits recording spans.
-            # Without this, spans are non-recording (invalid span context) and the
-            # LoggingHandler cannot stamp trace_id/span_id onto exported log records.
-            trace_endpoint = os.environ.get("OTEL_EXPORTER_OTLP_TRACES_ENDPOINT")
-            if not trace_endpoint and host:
-                if host.endswith("/api/public/otel/v1/traces"):
-                    trace_endpoint = host
-                else:
-                    trace_endpoint = host.rstrip("/") + "/api/public/otel/v1/traces"
-
-            span_kwargs = {}
-            if trace_endpoint:
-                span_kwargs["endpoint"] = trace_endpoint
-            if headers:
-                span_kwargs["headers"] = headers
-
-            tracer_provider = TracerProvider(resource=resource)
-            tracer_provider.add_span_processor(
-                SimpleSpanProcessor(OTLPSpanExporter(**span_kwargs))
-            )
-            atexit.register(tracer_provider.shutdown)
-        except Exception as e:
-            logger.warning("Failed to initialize OTLP exporters: %s", e)
-
-        # Pass our TracerProvider explicitly so OpenInference spans are recording
-        # and share the context the LoggingHandler reads for trace correlation.
-        LlamaIndexInstrumentor().instrument(tracer_provider=tracer_provider)
-        # LoggingInstrumentor only injects trace/span IDs into log records for
-        # correlation; it does NOT export logs. Attach a LoggingHandler bound to
-        # our LoggerProvider so standard `logging` records are emitted over OTLP.
-        LoggingInstrumentor().instrument()
-
-        from opentelemetry.sdk._logs import LoggingHandler
-
-        otel_handler = LoggingHandler(level=logging.NOTSET, logger_provider=logger_provider)
-        logging.getLogger().addHandler(otel_handler)
+        tracer = init_observability(service_name, service_version)
 
         # Process the data
-        tracer = tracer_provider.get_tracer("demo.agency") if tracer_provider is not None else None
         output_data = await process_data(Config(config_data=config_data), input_data, tracer=tracer)
 
         # Write output JSON file
