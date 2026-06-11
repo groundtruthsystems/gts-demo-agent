@@ -1,3 +1,41 @@
 {
-  "test": "test"
+  "agents": {
+    "case_summary": {
+      "valid_pages_threshold": 1200
+    },
+    "document_enrichment": {
+      "enable_page_summary": true,
+      "ner_chunk_overlap": 2,
+      "ner_chunk_size": 5,
+      "ner_max_concurrent_chunks": 1,
+      "page_summary_page_threshold": 1000,
+      "skip_ner": false
+    },
+    "request_type": {
+      "rule_batch": 20
+    }
+  },
+  "control_plane": {
+    "auth_url": "http://localhost:8080/realms/agency/protocol/openid-connect/token",
+    "base_url": "http://localhost:13001",
+    "client_id": "one",
+    "client_secret": "two",
+    "insecure": true
+  },
+  "deployment_config": {
+    "session_template": "a1ae6b16-c4c9-4c84-9c02-e110fe1e04a7"
+  },
+  "observability": {
+    "langfuse": {
+      "host": "http://localhost:13001",
+      "host1": "http://localhost:4000",
+      "public_key": "pk-lf-05d3b58d-ab15-4392-96b4-cbeedbcbd8e0",
+      "secret_key": "sk-lf-2ac737a8-ad2d-4e3d-96ce-1dd43732b0b5"
+    }
+  },
+  "prompt_management": {
+    "prompts": {},
+    "store": "agency"
+  },
+  "redis": {}
 }

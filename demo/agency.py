@@ -104,8 +104,70 @@ async def main():
 
             langfuse = get_client()
 
+        # Initialize LoggerProvider and OTLPLogExporter to publish logs to the collector
+        from opentelemetry._logs import set_logger_provider
+        from opentelemetry.sdk._logs import LoggerProvider
+        from opentelemetry.sdk._logs.export import SimpleLogRecordProcessor
+        from opentelemetry.exporter.otlp.proto.http._log_exporter import OTLPLogExporter
+        import atexit
+        import base64
+        import urllib.parse
+
+        logger_provider = LoggerProvider()
+        set_logger_provider(logger_provider)
+        try:
+            host = os.environ.get("OTEL_EXPORTER_OTLP_ENDPOINT") or os.environ.get("LANGFUSE_BASE_URL")
+            headers = {}
+
+            # Parse standard OTel headers if set
+            otel_headers = os.environ.get("OTEL_EXPORTER_OTLP_HEADERS")
+            if otel_headers:
+                for item in otel_headers.split(","):
+                    if "=" in item:
+                        k, v = item.split("=", 1)
+                        headers[k.strip()] = v.strip()
+
+            # Add Basic Auth header if Langfuse credentials exist
+            public_key = os.environ.get("LANGFUSE_PUBLIC_KEY")
+            secret_key = os.environ.get("LANGFUSE_SECRET_KEY")
+            if public_key and secret_key and "Authorization" not in headers:
+                auth_str = f"{public_key}:{secret_key}"
+                auth_bytes = auth_str.encode('utf-8')
+                auth_b64 = base64.b64encode(auth_bytes).decode('utf-8')
+                headers["Authorization"] = f"Basic {auth_b64}"
+
+            # Build OTLP logs endpoint URL
+            endpoint = os.environ.get("OTEL_EXPORTER_OTLP_LOGS_ENDPOINT")
+            if not endpoint and host:
+                if host.endswith("/api/public/otel/v1/logs"):
+                    endpoint = host
+                else:
+                    # Langfuse OTLP logs signal endpoint. urljoin would drop any
+                    # base path, so join explicitly against the configured host.
+                    endpoint = host.rstrip("/") + "/api/public/otel/v1/logs"
+
+            exporter_kwargs = {}
+            if endpoint:
+                exporter_kwargs["endpoint"] = endpoint
+            if headers:
+                exporter_kwargs["headers"] = headers
+
+            exporter = OTLPLogExporter(**exporter_kwargs)
+            logger_provider.add_log_record_processor(SimpleLogRecordProcessor(exporter))
+            atexit.register(logger_provider.shutdown)
+        except Exception as e:
+            logger.warning("Failed to initialize OTLP log exporter: %s", e)
+
         LlamaIndexInstrumentor().instrument()
+        # LoggingInstrumentor only injects trace/span IDs into log records for
+        # correlation; it does NOT export logs. Attach a LoggingHandler bound to
+        # our LoggerProvider so standard `logging` records are emitted over OTLP.
         LoggingInstrumentor().instrument()
+
+        from opentelemetry.sdk._logs import LoggingHandler
+
+        otel_handler = LoggingHandler(level=logging.NOTSET, logger_provider=logger_provider)
+        logging.getLogger().addHandler(otel_handler)
 
         # Process the data
         output_data = await process_data(Config(config_data=config_data), input_data)
