@@ -13,6 +13,7 @@ dependencies = [
 
     "langfuse>=3.8.1",
     "opentelemetry-instrumentation-anthropic>=0.47.5",
+    "opentelemetry-instrumentation-logging",
     "openinference-instrumentation-google-genai>=0.1.8",
     "openinference-instrumentation-llama-index>=4.3.8",
 

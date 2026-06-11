@@ -494,7 +494,7 @@ wheels = [
 
 [[package]]
 name = "gts-demo-agent"
-version = "0.0.14"
+version = "0.0.16"
 source = { virtual = "." }
 dependencies = [
     { name = "gts-agency-python-sdk" },
@@ -505,6 +505,7 @@ dependencies = [
     { name = "opentelemetry-api" },
     { name = "opentelemetry-exporter-otlp-proto-http" },
     { name = "opentelemetry-instrumentation-anthropic" },
+    { name = "opentelemetry-instrumentation-logging" },
     { name = "opentelemetry-sdk" },
     { name = "pydantic" },
 ]
@@ -525,6 +526,7 @@ requires-dist = [
     { name = "opentelemetry-api" },
     { name = "opentelemetry-exporter-otlp-proto-http" },
     { name = "opentelemetry-instrumentation-anthropic", specifier = ">=0.47.5" },
+    { name = "opentelemetry-instrumentation-logging" },
     { name = "opentelemetry-sdk" },
     { name = "pydantic", specifier = ">=2.9.2" },
     { name = "pytest", marker = "extra == 'dev'", specifier = ">=8.0.0" },
@@ -1202,6 +1204,19 @@ dependencies = [
 sdist = { url = "https://files.pythonhosted.org/packages/07/97/7caafa7a148a44044300afe437797b9b67e4d5d3a689cb2d150f550ae198/opentelemetry_instrumentation_anthropic-0.48.0.tar.gz", hash = "sha256:cf68e45ec7e599eeedfe1ebd92b452b87c24c2d79ba3b8802924d0674e0ad564", size = 14832, upload-time = "2025-11-11T09:44:22.354Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/cf/4d/aad77827f74e3d1d5bb4a260b91eb4e4081a02310df2d9854b40dfe9e506/opentelemetry_instrumentation_anthropic-0.48.0-py3-none-any.whl", hash = "sha256:c7935818c53b45cbaa4d78b79652eece03f1f13eefff36e692428a06d5a532c1", size = 18348, upload-time = "2025-11-11T09:43:40.65Z" },
+]
+
+[[package]]
+name = "opentelemetry-instrumentation-logging"
+version = "0.59b0"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "opentelemetry-api" },
+    { name = "opentelemetry-instrumentation" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/be/88/9c5f70fa8b8d96d30be378fc6eb1776e13aea456db15009f4eaef4928847/opentelemetry_instrumentation_logging-0.59b0.tar.gz", hash = "sha256:1b51116444edc74f699daf9002ded61529397100c9bc903c8b9aaa75a5218c76", size = 9969, upload-time = "2025-10-16T08:39:51.653Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/2c/a0/340cc45d71437c2f7e27f13c1d2e335b18bbc7a24fd7d174018500b3c7ba/opentelemetry_instrumentation_logging-0.59b0-py3-none-any.whl", hash = "sha256:fdd4eddbd093fc421df8f7d356ecb15b320a1f3396b56bce5543048a5c457eea", size = 12577, upload-time = "2025-10-16T08:38:58.064Z" },
 ]
 
 [[package]]

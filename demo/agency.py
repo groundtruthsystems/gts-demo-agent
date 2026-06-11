@@ -19,6 +19,7 @@ from demo.common.logger import setup_logger
 from llama_index.core.workflow import Context
 
 from openinference.instrumentation.llama_index import LlamaIndexInstrumentor
+from opentelemetry.instrumentation.logging import LoggingInstrumentor
 
 from langfuse import get_client
 
@@ -104,6 +105,7 @@ async def main():
             langfuse = get_client()
 
         LlamaIndexInstrumentor().instrument()
+        LoggingInstrumentor().instrument()
 
         # Process the data
         output_data = await process_data(Config(config_data=config_data), input_data)
