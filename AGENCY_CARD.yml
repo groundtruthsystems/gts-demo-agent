@@ -3,7 +3,7 @@
 # Maps to the deployment schema defined in documentation/AGENT_DEPLOYMENT.md
 
 name: demo
-version: 0.0.15
+version: 0.0.16
 description: A demonstration agent that showcases the GTS Agency platform capabilities including data processing, report generation, and automated analysis.
 
 # Unique code identifier for the agent (required for deployment)
@@ -57,61 +57,18 @@ inputSchema:
   application/json:
     type: object
     required:
-      - task_type
+      - team
     properties:
-      task_type:
+      correlation:
+        type: string
+        description: Correlation id
+      team:
         type: string
         description: The type of task to perform
         enum:
           - echo
-      data:
-        type: object
-        description: The input data to process
-        properties:
-          source:
-            type: string
-            description: Data source identifier or URI
-          format:
-            type: string
-            description: Format of the input data
-            enum:
-              - json
-              - csv
-              - parquet
-          content:
-            type: object
-            description: Inline data content (alternative to source)
-      options:
-        type: object
-        description: Task-specific configuration options
-        properties:
-          output_format:
-            type: string
-            description: Desired output format
-            default: json
-          include_metadata:
-            type: boolean
-            description: Include metadata in response
-            default: true
-          max_results:
-            type: integer
-            description: Maximum number of results to return
-            minimum: 1
-            maximum: 10000
-            default: 100
-      context:
-        type: object
-        description: Additional context for the task
-        properties:
-          session_id:
-            type: string
-            description: Session identifier for tracking
-          correlation_id:
-            type: string
-            description: Correlation ID for distributed tracing
-          user_id:
-            type: string
-            description: User identifier for audit logging
+          - error
+          - event
 
 defaultOutputModes:
   - application/json
