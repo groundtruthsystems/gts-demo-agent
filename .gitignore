@@ -1,3 +1,5 @@
 .idea/
 .venv/
 **/__pycache__/
+/output.json
+/events.json
