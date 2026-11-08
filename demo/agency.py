@@ -10,6 +10,7 @@ from importlib.metadata import version
 
 from demo.agents.common import ProgressEvent
 from demo.agents.echo import EchoWorkflow
+from demo.agents.long_run import LongWorkflow
 from demo.agents.err import ErrorWorkflow
 from demo.agents.eventing import EventingWorkflow
 
@@ -49,6 +50,8 @@ async def process_data(config_data: Config, input_data, tracer=None):
 
     if team == "echo":
         workflow = EchoWorkflow(config_data, timeout=120)
+    elif team == "long":
+        workflow = LongWorkflow(config_data, timeout=4200)
     elif team == "error":
         workflow = ErrorWorkflow(config_data)
     elif team == "event":
